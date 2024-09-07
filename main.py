@@ -1,44 +1,86 @@
 import requests
 import time
+import json
 
-# 设置 API 地址
-API_URL = 'http://127.0.0.1:1323'
+# 服务器地址
+BASE_URL = "http://127.0.0.1:1323"
 
-# 用户名
-username = 'kyoci'
 
-# 获取密码
-signup_url = f'{API_URL}/signup'
-signup_data = {'username': username}
-signup_response = requests.post(signup_url, data=signup_data)
-password = signup_response.json()['password']
+def signup(username):
+    response = requests.post(f"{BASE_URL}/signup", data={"username": username})
+    return response.json()
 
-# 登录获取 token
-login_url = f'{API_URL}/login'
-login_data = {'username': username, 'password': password}
-login_response = requests.post(login_url, data=login_data)
-token = login_response.json()['token']
 
-# 持续提交信息
-while True:
-  # 更新 token
-  heartbeat_url = f'{API_URL}/api/heartbeat'
-  headers = {'Authorization': f'Bearer {token}'}
-  heartbeat_response = requests.get(heartbeat_url, headers=headers)
-  token = heartbeat_response.json()['token']
+def login(username, password):
+    response = requests.post(
+        f"{BASE_URL}/login", data={"username": username, "password": password})
+    return response.json()["token"]
 
-  # 获取信息
-  info_url = f'{API_URL}/api/info'
-  info_response = requests.get(info_url, headers=headers)
-  code = info_response.json()['code']
 
-  # 提交信息
-  validate_url = f'{API_URL}/api/validate'
-  validate_data = {'code': code}
-  validate_response = requests.post(validate_url, headers=headers, data=validate_data)
+def heartbeat(token):
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(f"{BASE_URL}/api/heartbeat", headers=headers)
+    return response.json()["token"]
 
-  # 打印结果
-  print(f"提交信息: {code}, 响应: {validate_response.text}")
 
-  # 等待 5 分钟
-  time.sleep(5)
+def get_info(token):
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(f"{BASE_URL}/api/info", headers=headers)
+    return response.json()["code"]
+
+
+def validate(token, code):
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.post(
+        f"{BASE_URL}/api/validate", headers=headers, data={"code": code})
+    return response.text
+
+
+def main():
+    succuss = False
+    token = None
+    
+    while succuss is False:
+        try:
+            username = "kyoci"
+            user_data = signup(username)
+            token = login(username, user_data["password"])
+            succuss = True
+        except Exception as e:
+            print(f"登录失败，因为 {e}")
+            time.sleep(2)
+
+    print(f"登录成功，{token}")
+
+    while True:
+        try:
+            token = heartbeat(token)
+            print(f"Token 更新成功")
+
+            code = get_info(token)
+            result = validate(token, code)
+            print(f"提交代码: {code}, 结果: {result}")
+            
+            time.sleep(2)
+
+        except requests.exceptions.ConnectionError as e:
+            print(f"连接错误: {e}")
+            time.sleep(5)
+        except requests.exceptions.Timeout as e:
+            print(f"请求超时: {e}")
+            time.sleep(5)
+        except requests.exceptions.HTTPError as e:
+            print(f"HTTP 错误: {e}")
+            time.sleep(5)
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            try:
+                token = login(username, user_data["password"])
+            except Exception as e:
+                print(f"嵌套内登录错误")
+                time.sleep(5)
+            time.sleep(5)  # 如果发生其他错误，等待5秒后继续
+
+
+if __name__ == "__main__":
+    main()
