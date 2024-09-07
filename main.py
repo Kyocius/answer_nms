@@ -73,7 +73,7 @@ def main():
             print(f"HTTP 错误: {e}")
             time.sleep(5)
         except Exception as e:
-            print(f"Unexpected error: {e}")
+            print(f"其它错误: {e}")
             try:
                 token = login(username, user_data["password"])
             except Exception as e:
