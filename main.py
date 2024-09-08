@@ -37,15 +37,15 @@ def validate(token, code):
 
 
 def main():
-    succuss = False
+    success = False
     token = None
     
-    while succuss is False:
+    while success is False:
         try:
             username = "kyoci"
             user_data = signup(username)
             token = login(username, user_data["password"])
-            succuss = True
+            success = True
         except Exception as e:
             print(f"登录失败，因为 {e}")
             time.sleep(2)
